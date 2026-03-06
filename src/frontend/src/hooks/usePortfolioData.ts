@@ -18,6 +18,7 @@ const KEYS = {
   skills: "portfolio_skills",
   certifications: "portfolio_certifications",
   experiences: "portfolio_experiences",
+  profilePicture: "portfolio_profile_picture",
 } as const;
 
 // ─── Helper ─────────────────────────────────────────────────────
@@ -171,4 +172,39 @@ export function useExperiences() {
   }, []);
 
   return { experiences, addExperience, deleteExperience, loading };
+}
+
+// ─── Profile Picture hook ────────────────────────────────────────
+const DEFAULT_PROFILE_PICTURE = "/assets/uploads/kp-pp-1-1.jpeg";
+
+export function useProfilePicture() {
+  const [profilePicture, setProfilePictureState] = useState<string>(() => {
+    try {
+      return (
+        localStorage.getItem(KEYS.profilePicture) || DEFAULT_PROFILE_PICTURE
+      );
+    } catch {
+      return DEFAULT_PROFILE_PICTURE;
+    }
+  });
+
+  const setProfilePicture = useCallback((url: string) => {
+    try {
+      localStorage.setItem(KEYS.profilePicture, url);
+    } catch {
+      // ignore
+    }
+    setProfilePictureState(url);
+  }, []);
+
+  const resetProfilePicture = useCallback(() => {
+    try {
+      localStorage.removeItem(KEYS.profilePicture);
+    } catch {
+      // ignore
+    }
+    setProfilePictureState(DEFAULT_PROFILE_PICTURE);
+  }, []);
+
+  return { profilePicture, setProfilePicture, resetProfilePicture };
 }

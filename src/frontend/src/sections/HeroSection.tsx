@@ -1,5 +1,6 @@
 import { ChevronDown, Download, Eye, Mail } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useProfilePicture } from "../hooks/usePortfolioData";
 import { useTypingEffect } from "../hooks/useTypingEffect";
 
 const typingStrings = [
@@ -13,6 +14,7 @@ const typingStrings = [
 export default function HeroSection() {
   const [mounted, setMounted] = useState(false);
   const typedText = useTypingEffect(typingStrings);
+  const { profilePicture } = useProfilePicture();
 
   useEffect(() => {
     const timer = setTimeout(() => setMounted(true), 100);
@@ -236,7 +238,7 @@ export default function HeroSection() {
                 }}
               >
                 <img
-                  src="/assets/uploads/kp-pp-1-1.jpeg"
+                  src={profilePicture}
                   alt="Kundan Patel - Full Stack Developer"
                   style={{
                     width: "100%",

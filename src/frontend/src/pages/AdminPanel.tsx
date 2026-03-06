@@ -16,8 +16,10 @@ import {
   RefreshCw,
   ShieldCheck,
   Trash2,
+  Upload,
+  UserCircle2,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   Certification,
   Experience,
@@ -27,6 +29,7 @@ import type {
 import {
   useCertifications,
   useExperiences,
+  useProfilePicture,
   useProjects,
   useSkills,
 } from "../hooks/usePortfolioData";
@@ -61,7 +64,8 @@ type AdminTab =
   | "projects"
   | "skills"
   | "experience"
-  | "certifications";
+  | "certifications"
+  | "profile";
 
 export default function AdminPanel() {
   const navigate = useNavigate();
@@ -412,6 +416,7 @@ export default function AdminPanel() {
               { id: "skills", label: "Skills", icon: Code2 },
               { id: "experience", label: "Experience", icon: Briefcase },
               { id: "certifications", label: "Certifications", icon: Award },
+              { id: "profile", label: "Profile Pic", icon: UserCircle2 },
             ] as const
           ).map(({ id, label, icon: Icon }) => (
             <button
@@ -449,6 +454,7 @@ export default function AdminPanel() {
         {activeTab === "skills" && <SkillsTab />}
         {activeTab === "experience" && <ExperienceTab />}
         {activeTab === "certifications" && <CertificationsTab />}
+        {activeTab === "profile" && <ProfilePictureTab />}
       </div>
 
       <style>{`
@@ -1648,6 +1654,374 @@ function CertificationsTab() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Profile Picture Tab ──────────────────────────────────────────
+function ProfilePictureTab() {
+  const { profilePicture, setProfilePicture, resetProfilePicture } =
+    useProfilePicture();
+  const [urlInput, setUrlInput] = useState("");
+  const [preview, setPreview] = useState<string | null>(null);
+  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Handle file upload — convert to base64 data URL
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setErrorMsg("Please select a valid image file.");
+      setStatus("error");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorMsg("Image must be smaller than 5 MB.");
+      setStatus("error");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      setPreview(dataUrl);
+      setUrlInput("");
+      setStatus("idle");
+      setErrorMsg("");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleUrlPreview = () => {
+    const url = urlInput.trim();
+    if (!url) {
+      setErrorMsg("Please enter a URL.");
+      setStatus("error");
+      return;
+    }
+    setPreview(url);
+    setStatus("idle");
+    setErrorMsg("");
+  };
+
+  const handleSave = () => {
+    const src = preview || urlInput.trim();
+    if (!src) {
+      setErrorMsg("Please upload an image or enter a URL first.");
+      setStatus("error");
+      return;
+    }
+    setProfilePicture(src);
+    setStatus("success");
+    setPreview(null);
+    setUrlInput("");
+    setTimeout(() => setStatus("idle"), 3000);
+  };
+
+  const handleReset = () => {
+    if (!window.confirm("Reset to the original profile photo?")) return;
+    resetProfilePicture();
+    setPreview(null);
+    setUrlInput("");
+    setStatus("success");
+    setTimeout(() => setStatus("idle"), 3000);
+  };
+
+  return (
+    <div>
+      <h3
+        style={{
+          fontSize: "1.1rem",
+          fontWeight: 700,
+          color: "var(--text-primary)",
+          marginBottom: "24px",
+        }}
+      >
+        Update Profile Picture
+      </h3>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "auto 1fr",
+          gap: "32px",
+          alignItems: "start",
+        }}
+        className="profile-pic-grid"
+      >
+        {/* Live preview */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "12px",
+          }}
+        >
+          <div
+            style={{
+              width: "160px",
+              height: "160px",
+              borderRadius: "50%",
+              overflow: "hidden",
+              border: "3px solid var(--neon)",
+              background: "rgba(0,255,136,0.05)",
+              flexShrink: 0,
+              position: "relative",
+            }}
+          >
+            <img
+              src={preview || profilePicture}
+              alt="Profile preview"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                objectPosition: "center top",
+              }}
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = profilePicture;
+              }}
+            />
+          </div>
+          <span
+            style={{
+              fontSize: "0.72rem",
+              color: "var(--text-secondary)",
+              textAlign: "center",
+            }}
+          >
+            {preview ? "Preview (unsaved)" : "Current photo"}
+          </span>
+        </div>
+
+        {/* Controls */}
+        <div
+          className="glass-card"
+          data-ocid="admin.profile_panel"
+          style={{
+            padding: "24px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "20px",
+          }}
+        >
+          {/* Upload from device */}
+          <div>
+            <label
+              htmlFor="profile-file-input"
+              style={{
+                display: "block",
+                fontSize: "0.82rem",
+                fontWeight: 600,
+                color: "var(--text-secondary)",
+                marginBottom: "10px",
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+              }}
+            >
+              Upload from Device
+            </label>
+            <input
+              id="profile-file-input"
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              data-ocid="admin.profile_upload_button"
+              style={{ display: "none" }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              data-ocid="admin.profile_pick_button"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                background: "rgba(0,255,136,0.08)",
+                border: "1px solid rgba(0,255,136,0.25)",
+                borderRadius: "8px",
+                padding: "10px 20px",
+                color: "var(--neon)",
+                fontSize: "0.875rem",
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+              }}
+            >
+              <Upload size={15} />
+              Choose Image
+            </button>
+            <p
+              style={{
+                fontSize: "0.75rem",
+                color: "var(--text-secondary)",
+                marginTop: "8px",
+              }}
+            >
+              Supported: JPG, PNG, WebP, GIF — max 5 MB
+            </p>
+          </div>
+
+          {/* Divider */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              color: "var(--text-secondary)",
+              fontSize: "0.78rem",
+            }}
+          >
+            <div
+              style={{
+                flex: 1,
+                height: "1px",
+                background: "rgba(255,255,255,0.08)",
+              }}
+            />
+            OR
+            <div
+              style={{
+                flex: 1,
+                height: "1px",
+                background: "rgba(255,255,255,0.08)",
+              }}
+            />
+          </div>
+
+          {/* URL input */}
+          <div>
+            <label
+              htmlFor="profile-url-input"
+              style={{
+                display: "block",
+                fontSize: "0.82rem",
+                fontWeight: 600,
+                color: "var(--text-secondary)",
+                marginBottom: "10px",
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+              }}
+            >
+              Paste Image URL
+            </label>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <input
+                id="profile-url-input"
+                type="url"
+                placeholder="https://example.com/photo.jpg"
+                value={urlInput}
+                onChange={(e) => {
+                  setUrlInput(e.target.value);
+                  setPreview(null);
+                  setStatus("idle");
+                  setErrorMsg("");
+                }}
+                data-ocid="admin.profile_url_input"
+                className="admin-form-input"
+                style={{
+                  flex: 1,
+                  padding: "10px 14px",
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  borderRadius: "8px",
+                  color: "var(--text-primary)",
+                  fontSize: "0.875rem",
+                }}
+              />
+              <button
+                type="button"
+                onClick={handleUrlPreview}
+                style={{
+                  padding: "10px 16px",
+                  background: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  borderRadius: "8px",
+                  color: "var(--text-secondary)",
+                  fontSize: "0.82rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                Preview
+              </button>
+            </div>
+          </div>
+
+          {/* Error / success */}
+          {status === "error" && <ErrorBanner message={errorMsg} />}
+          {status === "success" && (
+            <div
+              data-ocid="admin.profile_success_state"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                background: "rgba(0,255,136,0.08)",
+                border: "1px solid rgba(0,255,136,0.25)",
+                borderRadius: "8px",
+                padding: "10px 14px",
+                color: "var(--neon)",
+                fontSize: "0.875rem",
+                fontWeight: 600,
+              }}
+            >
+              Profile picture updated successfully!
+            </div>
+          )}
+
+          {/* Action buttons */}
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="btn-neon"
+              onClick={handleSave}
+              data-ocid="admin.profile_save_button"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                fontSize: "0.875rem",
+                padding: "10px 22px",
+              }}
+            >
+              Save Photo
+            </button>
+            <button
+              type="button"
+              onClick={handleReset}
+              data-ocid="admin.profile_reset_button"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                background: "transparent",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: "8px",
+                padding: "10px 18px",
+                color: "var(--text-secondary)",
+                fontSize: "0.875rem",
+                fontWeight: 500,
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+              }}
+            >
+              Reset to Original
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        @media (max-width: 600px) {
+          .profile-pic-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </div>
   );
 }
